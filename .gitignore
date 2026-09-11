@@ -1,0 +1,19 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+*.egg-info/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
