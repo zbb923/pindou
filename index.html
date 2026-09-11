@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拼豆图纸生成器</title>
     <style>
         * {
@@ -347,6 +347,11 @@
             max-height: 70vh;
             cursor: grab;
             user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            /* 触摸操作由 JS 接管，避免浏览器默认手势冲突 */
+            touch-action: none;
+            overscroll-behavior: contain;
         }
         
         .result-canvas-container:active {
@@ -553,6 +558,99 @@
 
         .color-swatch-edit:hover .color-id-small {
             opacity: 1;
+        }
+
+        /* 仅移动端显示 */
+        .mobile-only {
+            display: none;
+        }
+
+        /* ==================== 移动端编辑模式布局 ==================== */
+        @media (max-width: 768px) {
+            .mobile-only {
+                display: flex;
+            }
+
+            /* 编辑画布外层改为纵向：画布在上，工具栏固定在底部 */
+            #editCanvasLayout {
+                flex-direction: column !important;
+                gap: 0 !important;
+                align-items: stretch !important;
+            }
+
+            #editCanvasLayout > .result-canvas-container {
+                flex: 1 1 auto !important;
+                width: 100% !important;
+                max-height: none !important;
+                min-height: 60vh !important;
+                padding: 8px !important;
+                /* 给底部固定工具栏留出空间 */
+                padding-bottom: 140px !important;
+            }
+
+            /* 工具栏改为底部固定横向栏 */
+            #leftEditToolbar {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+                padding: 10px !important;
+                border-radius: 12px 12px 0 0 !important;
+                min-width: 0 !important;
+                width: 100% !important;
+                z-index: 100 !important;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+                /* 安全区 */
+                padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+
+            /* 工具按钮组：横向排列 */
+            #editToolGroup {
+                flex-direction: row !important;
+                flex: 1 1 auto;
+                gap: 6px !important;
+            }
+            #editToolGroup .tool-btn {
+                flex: 1;
+                padding: 10px 4px !important;
+                font-size: 13px;
+            }
+
+            /* 当前颜色组：横向紧凑排列 */
+            #editColorGroup {
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 6px !important;
+                flex: 0 0 auto;
+            }
+            #editColorGroup > span:first-child {
+                display: none !important; /* 隐藏"当前颜色"标签 */
+            }
+            #currentColorBox {
+                width: 40px !important;
+                height: 40px !important;
+            }
+            #currentColorId {
+                font-size: 13px !important;
+                min-width: 30px;
+            }
+            #editColorGroup > div:last-child {
+                display: none !important; /* 隐藏"设为原色/目标"按钮（放替换区里） */
+            }
+
+            /* 颜色替换区：移动端默认折叠，展开时占满一行 */
+            #editReplaceGroup {
+                display: none !important;
+                flex-basis: 100% !important;
+                border-top: 1px solid #374151;
+                padding-top: 12px;
+            }
+            #editReplaceGroup.mobile-expanded {
+                display: flex !important;
+            }
         }
     </style>
 </head>
@@ -874,10 +972,10 @@
 
                 <!-- 编辑模式：左工具栏 + 画布 -->
                 <div id="editCanvasWrap" style="display: none;">
-                    <div style="display: flex; gap: 20px; align-items: flex-start;">
+                    <div id="editCanvasLayout" style="display: flex; gap: 20px; align-items: flex-start;">
                         <!-- 左侧工具栏：拖动 / 画笔 / 吸管 / 当前颜色 -->
                         <div id="leftEditToolbar" style="display: flex; flex-direction: column; gap: 24px; padding: 20px; background: #1f2937; border-radius: 12px; min-width: 170px;">
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div id="editToolGroup" style="display: flex; flex-direction: column; gap: 10px;">
                                 <button class="tool-btn active" id="dragTool" title="拖动工具（按住拖动图纸）" style="justify-content: center;">
                                     ✋ 拖动
                                 </button>
@@ -888,7 +986,7 @@
                                     🧪 吸管
                                 </button>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 10px; align-items: stretch;">
+                            <div id="editColorGroup" style="display: flex; flex-direction: column; gap: 10px; align-items: stretch;">
                                 <span style="color: #9ca3af; font-size: 14px; text-align: center;">当前颜色</span>
                                 <div id="currentColorBox" style="width: 100%; height: 60px; border: 2px solid #fff; border-radius: 6px;"></div>
                                 <span id="currentColorId" style="font-weight: bold; color: #fff; text-align: center; font-size: 18px;">-</span>
@@ -897,7 +995,9 @@
                                     <button class="tool-btn" id="setTargetBtn" title="把当前颜色设为替换的目标颜色" style="flex: 1; padding: 6px 8px; font-size: 12px; justify-content: center;">设为目标 →</button>
                                 </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #374151; padding-top: 16px;">
+                            <!-- 移动端折叠替换区的开关按钮 -->
+                            <button class="tool-btn mobile-only" id="toggleReplaceBtn" style="justify-content: center;">🔄 颜色替换</button>
+                            <div id="editReplaceGroup" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #374151; padding-top: 16px;">
                                 <span style="color: #9ca3af; font-size: 14px; text-align: center;">一键颜色替换</span>
                                 <div class="replace-slot" id="replaceSourceSlot" title="点击进入拾取模式：用吸管点图中格子或点击色卡设置原颜色">
                                     <div id="replaceSourceBox" style="width: 34px; height: 34px; border-radius: 6px; border: 2px solid #4b5563; flex-shrink: 0;"></div>
@@ -3431,6 +3531,15 @@
 
         replaceColorBtn.addEventListener('click', performColorReplace);
 
+        // 移动端：点击「颜色替换」按钮展开/折叠替换区
+        const toggleReplaceBtn = document.getElementById('toggleReplaceBtn');
+        const editReplaceGroup = document.getElementById('editReplaceGroup');
+        if (toggleReplaceBtn && editReplaceGroup) {
+            toggleReplaceBtn.addEventListener('click', () => {
+                editReplaceGroup.classList.toggle('mobile-expanded');
+            });
+        }
+
         // 快捷按钮：把当前颜色直接填入原颜色 / 目标颜色槽
         setSourceBtn.addEventListener('click', () => {
             if (!state.currentColorBean) { alert('请先选择颜色'); return; }
@@ -3758,6 +3867,39 @@
             lastBrushCell = null;
         });
 
+        // ===== 移动端：画笔/吸管触摸操作 =====
+        // 把 touch 转成带 clientX/clientY 的伪事件，复用 handleEditCanvasClick
+        function touchToFakeEvent(touch) {
+            return { clientX: touch.clientX, clientY: touch.clientY };
+        }
+
+        editCanvas.addEventListener('touchstart', (e) => {
+            if (state.currentTool !== 'brush' && state.currentTool !== 'eyedropper') return;
+            e.preventDefault();
+            e.stopPropagation();
+            isDrawing = true;
+            lastBrushCell = null;
+            handleEditCanvasClick(touchToFakeEvent(e.touches[0]), false);
+        }, { passive: false });
+
+        editCanvas.addEventListener('touchmove', (e) => {
+            if (!isDrawing) return;
+            if (state.currentTool !== 'brush' && state.currentTool !== 'eyedropper') return;
+            e.preventDefault();
+            e.stopPropagation();
+            handleEditCanvasClick(touchToFakeEvent(e.touches[0]), true);
+        }, { passive: false });
+
+        editCanvas.addEventListener('touchend', (e) => {
+            isDrawing = false;
+            lastBrushCell = null;
+        });
+
+        editCanvas.addEventListener('touchcancel', () => {
+            isDrawing = false;
+            lastBrushCell = null;
+        });
+
         // 应用更改和取消
         applyEditBtn.addEventListener('click', applyEdit);
         cancelEditBtn.addEventListener('click', exitEditMode);
@@ -3844,6 +3986,43 @@
             });
         }
 
+        // 检测移动端（窄屏或触摸设备）
+        function isMobile() {
+            return window.innerWidth < 768 || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+        }
+
+        function zoomFit() {
+            // 获取容器和canvas的尺寸
+            const container = document.querySelector('.result-canvas-container');
+            const activeCanvas = getActiveCanvas();
+            
+            if (!activeCanvas || activeCanvas.width === 0) {
+                return;
+            }
+            
+            if (isMobile()) {
+                // 移动端：按屏幕宽度铺满，不限制高度（可上下滚动）
+                const screenWidth = window.innerWidth;
+                const canvasWidth = activeCanvas.width;
+                const fitScale = Math.max(0.25, Math.min(3, (screenWidth - 24) / canvasWidth));
+                updateZoom(fitScale);
+                return;
+            }
+
+            // 桌面端：保持原逻辑
+            const containerWidth = container.clientWidth - 60; 
+            const containerHeight = Math.max(400, window.innerHeight * 0.5) - 40; 
+            
+            const canvasWidth = activeCanvas.width;
+            const canvasHeight = activeCanvas.height;
+            
+            const scaleX = containerWidth / canvasWidth;
+            const scaleY = containerHeight / canvasHeight;
+            const fitScale = Math.min(scaleX, scaleY, 2); // 最大2倍
+            
+            updateZoom(fitScale);
+        }
+
         // 绑定缩放按钮事件
         document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
         document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
@@ -3899,6 +4078,71 @@
                 const walkY = (y - startY) * 2;
                 canvasContainer.scrollLeft = scrollLeft - walkX;
                 canvasContainer.scrollTop = scrollTop - walkY;
+            });
+
+            // ===== 移动端：双指捏合缩放 + 单指拖动 =====
+            let touchPinchStartDist = 0;
+            let touchPinchStartZoom = 1;
+            let touchPanStart = null;
+            let touchPanScroll = null;
+            let touchIsPinch = false;
+
+            canvasContainer.addEventListener('touchstart', (e) => {
+                if (!state.processResult) return;
+                // 编辑模式且非拖动工具：不接管（交给画布的画笔/吸管 touch）
+                if (state.isEditMode && state.currentTool !== 'drag') return;
+
+                if (e.touches.length === 2) {
+                    // 双指 → 捏合缩放
+                    e.preventDefault();
+                    touchIsPinch = true;
+                    const [t1, t2] = e.touches;
+                    touchPinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    touchPinchStartZoom = currentZoom;
+                } else if (e.touches.length === 1) {
+                    // 单指 → 拖动平移
+                    const t = e.touches[0];
+                    touchPanStart = { x: t.clientX, y: t.clientY };
+                    touchPanScroll = { left: canvasContainer.scrollLeft, top: canvasContainer.scrollTop };
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchmove', (e) => {
+                if (!state.processResult) return;
+                if (state.isEditMode && state.currentTool !== 'drag') return;
+
+                if (e.touches.length === 2 && touchIsPinch) {
+                    e.preventDefault();
+                    const [t1, t2] = e.touches;
+                    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    const scale = dist / touchPinchStartDist;
+                    updateZoom(touchPinchStartZoom * scale);
+                } else if (e.touches.length === 1 && touchPanStart && !touchIsPinch) {
+                    e.preventDefault();
+                    const t = e.touches[0];
+                    canvasContainer.scrollLeft = touchPanScroll.left - (t.clientX - touchPanStart.x);
+                    canvasContainer.scrollTop = touchPanScroll.top - (t.clientY - touchPanStart.y);
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    touchIsPinch = false;
+                    touchPanStart = null;
+                    touchPanScroll = null;
+                } else if (e.touches.length === 1) {
+                    // 从双指变单指：重置单指起点，避免跳动
+                    touchIsPinch = false;
+                    const t = e.touches[0];
+                    touchPanStart = { x: t.clientX, y: t.clientY };
+                    touchPanScroll = { left: canvasContainer.scrollLeft, top: canvasContainer.scrollTop };
+                }
+            });
+
+            canvasContainer.addEventListener('touchcancel', () => {
+                touchIsPinch = false;
+                touchPanStart = null;
+                touchPanScroll = null;
             });
         });
 
